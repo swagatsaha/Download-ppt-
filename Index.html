@@ -1,0 +1,159 @@
+<!--
+Project: Simple PPT Download Site
+Files included in this single document (copy each to separate files):
+1) index.html  -> The front-end page to upload (optional) and download the PPT.
+2) server.js   -> Optional Node.js + Express server to handle uploads and serve files.
+3) README     -> Quick instructions to run the server.
+
+INSTRUCTIONS: Copy the sections labeled "=== FILE: filename ===" into separate files with the exact filenames, then follow the README to run.
+-->
+
+<!-- ================= FILE: index.html ================= -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PPT Download — Simple Host</title>
+  <style>
+    body{font-family: system-ui,Segoe UI,Roboto,Helvetica,Arial;max-width:900px;margin:36px auto;padding:0 18px;color:#111}
+    header{display:flex;align-items:center;gap:12px}
+    .card{border:1px solid #e3e3e3;padding:18px;border-radius:8px;margin-top:18px}
+    footer{margin-top:28px;color:#666;font-size:0.9rem}
+    .small{font-size:0.9rem;color:#444}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PPT Download Site</h1>
+  </header>
+
+  <p class="small">Place your PowerPoint (.pptx or .ppt) file in the <code>/public/files/</code> folder on the server (or use the Upload box below) and it will be available for others to download. The example filename used here is <code>presentation.pptx</code>.</p>
+
+  <section class="card">
+    <h2>Download</h2>
+    <p>Click to download the file (example):</p>
+    <!-- Change the filename below to the actual file you saved in public/files/ -->
+    <a id="downloadLink" href="1.pptx" download>Download presentation.pptx</a>
+    <p class="small">If the file is not placed on the server at <code>/public/files/presentation.pptx</code> the link will return 404.</p>
+  </section>
+
+  <section class="card">
+    <h2>Upload (optional)</h2>
+    <p class="small">Use this form to upload a new PPT file to the server (server must support the /upload endpoint). The uploaded file will be saved into <code>/public/files/</code>.</p>
+    <form id="uploadForm" method="post" action="/upload" enctype="multipart/form-data">
+      <input type="file" name="pptfile" accept=".ppt,.pptx" required>
+      <button type="submit">Upload</button>
+    </form>
+    <div id="uploadMsg" class="small" style="margin-top:8px;color:green"></div>
+  </section>
+
+  <section class="card">
+    <h2>Privacy / Notes</h2>
+    <ul>
+      <li>Anyone with the direct link (or who can reach your server) can download the file.</li>
+      <li>This example has no authentication — don't use it for sensitive files without adding auth.</li>
+      <li>For production, host behind HTTPS and add authentication and virus scanning for uploads.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <small>Made for quick sharing of a PowerPoint file. To change the filename that appears for download, edit the <code>href</code> of <code>#downloadLink</code> to match the file you uploaded or placed in the files folder.</small>
+  </footer>
+
+</body>
+</html>
+
+
+<!-- ================= FILE: server.js ================= -->
+/***** Node.js server (Express + Multer)
+
+Save as server.js. This small server serves static files from ./public and accepts uploads
+(POST /upload) saving them to ./public/files. It is suitable for quick local or small LAN use.
+
+Install dependencies first:
+  npm init -y
+  npm install express multer
+
+Run:
+  node server.js
+
+Open http://localhost:3000 in your browser.
+
+Security notes: this example is intentionally minimal. For production, add authentication,
+rate-limiting, virus scanning, file type checks, logging, and HTTPS.
+
+*/
+
+const express = require('express');
+const multer  = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ensure public/files exists
+const filesDir = path.join(__dirname, 'public', 'files');
+fs.mkdirSync(filesDir, { recursive: true });
+
+// serve static site
+app.use(express.static(path.join(__dirname, 'public')));
+
+// configure multer to save uploaded files to public/files
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, filesDir)
+  },
+  filename: function (req, file, cb) {
+    // keep original name, but you could sanitize/rename here
+    cb(null, file.originalname)
+  }
+});
+const upload = multer({
+  storage: storage,
+  fileFilter: function (req, file, cb) {
+    const allowed = ['.ppt', '.pptx'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error('Only .ppt and .pptx allowed'));
+  }
+});
+
+app.post('/upload', upload.single('pptfile'), (req, res) => {
+  if (!req.file) return res.status(400).send('No file uploaded');
+  // redirect back to homepage or return JSON
+  res.redirect('/');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running: http://localhost:${PORT}`);
+});
+
+
+<!-- ================= FILE: README.md ================= -->
+# Simple PPT Download Site
+
+1. Create project folder, paste these files:
+   - index.html -> to `public/index.html` or to project root and serve as static
+   - server.js -> project root
+   - (optional) place your PPT file at `public/files/presentation.pptx`
+
+2. Install Node dependencies:
+   ```bash
+   npm init -y
+   npm install express multer
+   ```
+
+3. Start server:
+   ```bash
+   node server.js
+   ```
+
+4. Visit: http://localhost:3000 and use the Download link or Upload form.
+
+Notes:
+- For production: add HTTPS, authentication, file-scanning, and proper sanitization.
+- If you only want static hosting with no upload, you can simply place `presentation.pptx` inside `public/files/` and serve `public/` with any static webhost (GitHub Pages, Netlify, nginx, etc.).
+
+-->
